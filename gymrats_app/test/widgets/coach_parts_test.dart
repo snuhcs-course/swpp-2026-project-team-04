@@ -202,7 +202,7 @@ void main() {
             onTap: () {},
             onSkip: () {},
             onChoose: (_) {},
-            onRestart: () {},
+            onReport: () {},
             onLeave: () {},
           ),
         ),

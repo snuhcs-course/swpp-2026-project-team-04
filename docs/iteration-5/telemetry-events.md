@@ -41,6 +41,11 @@ The six app events also carry:
 | `matching_started` | The queue takes the join (`queue.joined`, the first one for each search; a reconnect does not start another) | `exercise`, `kind` | `push_up` · `squat` / `main` · `friend` |
 | `matching_finished` | Opponent found → `found`. The user stops the search (cancel, back, closing the lobby, 다시 신청), or the friend declines or takes the invite back → `cancelled`. The friend does not accept in time, or accepted but never paired → `timeout`. The search fails (connection, server error, login expired, invite not sent) → `error` | `result`, `wait_ms` | `found` · `cancelled` · `timeout` · `error` |
 
+**Tutorial pages (2026-11-28, #113):** the builds with the game-intro page (page 2, online battle and arcade) have
+23 pages: `tutorial_started.pages_total` is 23 (22 before), and a `tutorial_finished.last_page` of 3 or more is one
+higher than the same page in earlier builds. Split by `app_version` before comparing them. The events themselves are
+unchanged.
+
 **SetupReason values:** `no_person`, `too_close`, `too_far`, `not_facing_forward`, `missing_parts`, `not_in_push_up`,
 `not_standing`, `phone_too_flat`, `phone_shaky`.
 

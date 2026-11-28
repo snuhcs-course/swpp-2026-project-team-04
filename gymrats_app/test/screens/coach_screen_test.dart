@@ -67,6 +67,7 @@ void main() {
     Size size = const Size(360, 780),
     double textScale = 1,
     String characterId = 'seal',
+    VoidCallback? onReport,
   }) async {
     await _loadFonts(tester);
     tester.view.physicalSize = size;
@@ -104,7 +105,7 @@ void main() {
     );
     navigator.currentState!.push(
       MaterialPageRoute<void>(
-        builder: (_) => CoachScreen(viewModel: viewModel),
+        builder: (_) => CoachScreen(viewModel: viewModel, onReport: onReport),
       ),
     );
     await tester.pump();
@@ -337,33 +338,63 @@ void main() {
       expect(find.text('스쿼트를 고르면 운동 선택과 대결 시작 화면에 떠요'), findsOneWidget);
     });
 
-    testWidgets('사양할래: no goal; then the end with 처음부터 다시 and 리포트로', (
-      tester,
-    ) async {
-      await open(tester, atGoal: true, reduced: true);
+    testWidgets('사양할래: no goal; then the end with 돌아가기 and 상세 리포트로 '
+        '(P15), no 처음부터 다시', (tester) async {
+      var reports = 0;
+      await open(
+        tester,
+        atGoal: true,
+        reduced: true,
+        onReport: () => reports++,
+      );
       await tester.tap(find.text('사양할래'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(store.goals, isEmpty);
       await next(tester);
-      expect(find.text('처음부터 다시'), findsOneWidget);
-      expect(find.text('리포트로'), findsOneWidget);
+      expect(find.text('돌아가기'), findsOneWidget);
+      expect(find.text('상세 리포트로'), findsOneWidget);
+      expect(find.text('처음부터 다시'), findsNothing);
+      expect(find.text('리포트로'), findsNothing);
+      // 상세 리포트로 is the filled one, on the right.
+      expect(
+        tester.getCenter(find.text('상세 리포트로')).dx,
+        greaterThan(tester.getCenter(find.text('돌아가기')).dx),
+      );
+      expect(
+        find.ancestor(
+          of: find.text('상세 리포트로'),
+          matching: find.byType(FilledButton),
+        ),
+        findsOneWidget,
+      );
       // 건너뛰기 and the dots are gone at the end.
       expect(find.text('건너뛰기'), findsNothing);
       expect(find.byKey(const ValueKey('coach-dot-0')), findsNothing);
-      await tester.tap(find.text('처음부터 다시'));
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(viewModel.state.index, 0);
+      await tester.tap(find.text('상세 리포트로'));
+      expect(reports, 1);
     });
 
-    testWidgets('리포트로 and system back return to the report', (tester) async {
+    testWidgets('돌아가기 and system back return to the result', (tester) async {
       await open(tester, reduced: true);
       viewModel
         ..skip()
         ..skip();
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(find.text('리포트로'));
+      await tester.tap(find.text('돌아가기'));
       await tester.pumpAndSettle();
       expect(find.text('report'), findsOneWidget);
+      expect(find.byType(CoachScreen), findsNothing);
+    });
+
+    testWidgets('without a way to the report, 상세 리포트로 leaves as 돌아가기 '
+        'does', (tester) async {
+      await open(tester, reduced: true);
+      viewModel
+        ..skip()
+        ..skip();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('상세 리포트로'));
+      await tester.pumpAndSettle();
       expect(find.byType(CoachScreen), findsNothing);
     });
 

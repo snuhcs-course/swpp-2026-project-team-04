@@ -16,6 +16,7 @@ import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/screens/coach_screen.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/services/feedback/feedback_stats.dart';
 import 'package:gymrats_app/services/feedback/goal_store.dart';
@@ -681,7 +682,7 @@ void main() {
 
     group('the character card (A10)', () {
       /// The label the card's sentence reads.
-      final cardLine = RegExp(r'^GYM마우스, 이번 판 이야기해 줄게찍! 할 말이 \d+개 있어\.$');
+      final cardLine = RegExp(r'^GYM마우스, 이번 판 이야기 시간이다찍! 할 말이 \d+개 있어\.$');
 
       testWidgets('a battle with a form report: the card in place of the '
           'tip, with the talk\'s line count (task.md W10 decision 4)', (
@@ -704,7 +705,7 @@ void main() {
         expect(made.lineCount, greaterThanOrEqualTo(3));
         expect(
           find.bySemanticsLabel(
-            '물렁범, 이번 판 이야기해 줄게범! 할 말이 ${made.lineCount}개 있어.',
+            '물렁범, 이번 판 이야기 시간이다범! 할 말이 ${made.lineCount}개 있어.',
           ),
           findsOneWidget,
         );
@@ -744,6 +745,41 @@ void main() {
         await tester.pumpAndSettle();
         final talk = routes.settings.single.arguments! as CoachViewModel;
         expect(talk.state.onQuestion, isTrue);
+      });
+
+      testWidgets("at the talk's end 상세 리포트로 puts this battle's report "
+          'in its place, so back comes here; 돌아가기 comes here at once '
+          '(P15)', (tester) async {
+        Future<void> toEnd() async {
+          await tester.tap(find.text('건너뛰기'));
+          await tester.pumpAndSettle();
+          final talk = routes.settings.last.arguments! as CoachViewModel;
+          talk.setInstant(true);
+          await talk.choose(null);
+          for (var i = 0; i < 6 && !talk.state.ended; i++) {
+            talk.tap();
+          }
+          await tester.pumpAndSettle();
+          expect(talk.state.ended, isTrue);
+        }
+
+        await open(tester, _result(form: _form), history: _earlier());
+        await toEnd();
+        await tester.tap(find.text('상세 리포트로'));
+        await tester.pumpAndSettle();
+        expect(routes.names, [GymRatsApp.coachRoute, GymRatsApp.feedbackRoute]);
+        expect(routes.settings.last.arguments, same(_form));
+        expect(find.byType(CoachScreen), findsNothing);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(ResultScreen), findsOneWidget);
+
+        await toEnd();
+        await tester.tap(find.text('돌아가기'));
+        await tester.pumpAndSettle();
+        expect(find.byType(CoachScreen), findsNothing);
+        expect(find.byType(ResultScreen), findsOneWidget);
+        expect(routes.names.last, GymRatsApp.coachRoute);
       });
 
       testWidgets('with reduced motion the talk shows each line whole', (
@@ -789,7 +825,7 @@ void main() {
           ),
         );
         expect(
-          find.bySemanticsLabel(RegExp('^펭뚱이, 이번 판 이야기해 줄게펭!')),
+          find.bySemanticsLabel(RegExp('^펭뚱이, 이번 판 이야기 시간이다펭!')),
           findsOneWidget,
         );
         await tester.tap(find.text('건너뛰기'));
