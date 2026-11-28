@@ -1,0 +1,15 @@
+[Unit]
+Description=GymRats database backup to storage off the team server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# The database owner; it reads the database read-only and writes only the backups folder.
+User=jinyoung
+Group=gymrats
+EnvironmentFile=/srv/gymrats/.env
+ExecStart=/usr/bin/python3 /srv/gymrats/backend/deploy/db_backup.py backup
+# Worst case: 3 tries x (copy + listing, 150 s each) + 1 and 5 minute waits = 21 min, so the
+# final alert is sent before this limit.
+TimeoutStartSec=25min

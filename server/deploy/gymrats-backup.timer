@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up the GymRats database off the server every 12 hours
+
+[Timer]
+# 03:00 and 15:00 KST; a run missed while the machine was off starts at boot.
+OnCalendar=*-*-* 03,15:00:00 Asia/Seoul
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
