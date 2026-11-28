@@ -784,7 +784,10 @@ A10 일정과 두 분의 작업 범위를 반영했어요.
 ## 2026-11-29 · Hyunwoo Song · feat/iter5-report-account-scope
 (A10 was set up by the 11-27 14:31 and 14:59 prompts in the section above. This export also brought the
 prompts of 11-27 to 11-29 that were not logged yet, from every step.)
+<!-- 9a315516 2026-11-26T04:44:03.343Z -->
+<!-- 9a315516 2026-11-26T07:56:14.073Z -->
 
+<!-- 9a315516 2026-11-27T07:05:33.683Z -->
 [Hyunwoo Song, 11-27 16:05] "설치해봐"
 
 <!-- 9a315516 2026-11-27T07:06:12.874Z -->
