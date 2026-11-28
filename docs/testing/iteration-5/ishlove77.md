@@ -8,13 +8,13 @@ notes into `docs/testing/Testing-Documentation.md`.
 #### 2026-11-28 · step P21 follow-up `feat/iter5-failover`: production health check and backup off the server
 PM request after #114 (relayed by the user): health check every 30 s, 5 s limit, restart after 3 failures; a 12 h
 backup off the server with retries, alerts and a restore from the copy. Code at commits `5c1ecbc` (health check),
-`3fda402` (backup), `56ba5e4` (record, `docs/iteration-5/server-health-backup.md`). Commands from `server/` on macOS
-(Python 3.12).
+`3fda402` (backup), `56ba5e4` (record, `docs/iteration-5/server-health-backup.md`); tests run on 11/29 at `dd53bc2`.
+Commands from `server/` on macOS (Python 3.12).
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| API server | pytest, pytest-django, pytest-cov | 90% | 98% total (unchanged; the new scripts are outside `accounts`, `matches`, `gymrats`) | 11/28 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
-| Server deploy scripts | pytest, pytest-cov, local HTTP servers, fake rclone | 90% | `health_watch.py` 99%, `db_backup.py` 99% (the `sys.exit(main())` line each) | 11/28 | `.venv/bin/python -m pytest tests/test_health_watch.py tests/test_db_backup.py --cov=deploy` |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total (unchanged; the new scripts are outside `accounts`, `matches`, `gymrats`) | 11/29 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Server deploy scripts | pytest, pytest-cov, local HTTP servers, fake rclone | 90% | `health_watch.py` 99%, `db_backup.py` 99% (the `sys.exit(main())` line each) | 11/29 | `.venv/bin/python -m pytest tests/test_health_watch.py tests/test_db_backup.py --cov=deploy` |
 
 - **Tests:** server `pytest` 416 passed, 0 failed (44 new: 21 in `test_health_watch.py`, 23 in `test_db_backup.py`).
   No app change, so `flutter test` was not rerun.
