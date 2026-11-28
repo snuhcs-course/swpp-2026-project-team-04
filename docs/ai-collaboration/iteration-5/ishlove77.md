@@ -320,6 +320,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   SIGTERM at the unit's limit skipping cleanup and the alert. Claude's first test for the webhook passed on the old
   code, because it tested a silent server instead of a trickling one; checking each new test against the previous
   commit caught it (`0b9a600`, `10966a8`).
+- P21 follow-up, Codex review of `5736780` (P2): the manual `list`/`fetch` commands had no settings outside the unit;
+  the install doc assumed the unit's environment. Fixed in `e53cd98`. Over four Codex rounds on PR #118 (9 findings), each
+  round found a narrower case; all were cheap and fixed, with tests that fail on the commit before.
 
 ## 4. Revisions and Decisions
 - P21 follow-up: the PM fixed RTO 30 min / RPO 24 h and asked for the health check and a 12 h backup off the

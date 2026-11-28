@@ -5,6 +5,16 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fix for the Codex review of `5736780`
+Fix at commit `e53cd98`.
+- **Finding (P2):** `list` and `fetch` run by hand do not get the unit's `EnvironmentFile=`, so the documented
+  restore stopped with "BACKUP_REMOTE is not set". They now read `BACKUP_REMOTE` and `RCLONE_CONFIG` (only those
+  keys) from `/srv/gymrats/.env` (`--env-file`) when the shell has not set them.
+- **Tests:** `test_list_by_hand_reads_the_remote_and_rclone_config_from_the_env_file` (fails on `5736780`);
+  `test_list_and_fetch_need_a_remote` now points at a missing env file.
+- **Results:** server `pytest` 428 passed, 0 failed (56 in the two files: 24 + 32); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
 #### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `2b3bad4`
 Fix at commits `0b9a600` (webhook) and `10966a8` (backup).
 - **Findings (P2 ×2):** (1) a webhook that trickles its answer could hold an alert past the unit's limit → the whole
