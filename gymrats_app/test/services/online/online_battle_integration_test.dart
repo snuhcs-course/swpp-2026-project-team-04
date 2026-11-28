@@ -952,7 +952,8 @@ void main() {
     expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
     final result = await b.next('match.finished');
     expect(result['payload']['winner_id'], 'a');
-    expect((result['payload']['players'] as List).first['valid_reps'], 1);
+    final players = result['payload']['players'] as List;
+    expect(players.singleWhere((p) => p['player_id'] == 'a')['valid_reps'], 1);
   });
   test(
     'ready timeout cancels; leaving preparation never fabricates a win',
@@ -1379,11 +1380,12 @@ void main() {
           reason: RejectReason.kneesDown,
         ),
       );
-      expect(a.myLastScore!.points, 0);
-      await until(() => b.opponentLastScore != null);
+      expect(a.myLastScore, isNull);
+      await until(() => b.opponentMisses == 1 && a.myInvalidReps == 1);
       expect(a.myScore, 0);
       expect(b.opponentScore, 0);
-      expect(b.opponentLastScore!.points, 0);
+      expect(b.opponentLastScore, isNull);
+      expect(b.opponentReps, 0);
       expect(a.myInvalidReps, 1);
       expect(a.myReps, 0);
     });

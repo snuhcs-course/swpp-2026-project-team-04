@@ -302,6 +302,24 @@ class BattleRejectSignView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
     final icon = sign.reason.signIcon;
+    final label = OverflowBox(
+      fit: OverflowBoxFit.deferToChild,
+      minWidth: 0,
+      maxWidth: sign.fullCorrection
+          ? BattleFx.stageWidth - 48
+          : double.infinity,
+      child: BattleBand(
+        text: sign.fullCorrection
+            ? sign.text.replaceAll(' ', '\n')
+            : sign.text,
+        style: theme.stageSignLabel,
+        color: sign.tone.color,
+        sidePadding: _labelSidePadding,
+        topPadding: _labelTopPadding,
+        edge: labelEdge,
+        wrap: sign.fullCorrection,
+      ),
+    );
     return Semantics(
       container: true,
       label: sign.reason.koreanMessage,
@@ -312,9 +330,15 @@ class BattleRejectSignView extends StatelessWidget {
             transform: Matrix4.rotationZ(sign.rotation * math.pi / 180)
                 .multiplied(Matrix4.diagonal3Values(sign.scale, sign.scale, 1)),
             origin: _pivot,
-            child: SizedBox.fromSize(
-              size: size,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: size.width,
+                maxWidth: size.width,
+                minHeight: size.height,
+                maxHeight: sign.fullCorrection ? double.infinity : size.height,
+              ),
               child: Stack(
+                alignment: Alignment.topCenter,
                 clipBehavior: Clip.none,
                 children: [
                   if (icon != null)
@@ -342,25 +366,13 @@ class BattleRejectSignView extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: labelTop,
-                    // A long label is wider than the sign's box.
-                    child: OverflowBox(
-                      fit: OverflowBoxFit.deferToChild,
-                      minWidth: 0,
-                      maxWidth: double.infinity,
-                      child: BattleBand(
-                        text: sign.text,
-                        style: theme.stageSignLabel,
-                        color: sign.tone.color,
-                        sidePadding: _labelSidePadding,
-                        topPadding: _labelTopPadding,
-                        edge: labelEdge,
-                      ),
-                    ),
-                  ),
+                  if (sign.fullCorrection)
+                    Padding(
+                      padding: const EdgeInsets.only(top: labelTop),
+                      child: label,
+                    )
+                  else
+                    Positioned(left: 0, right: 0, top: labelTop, child: label),
                 ],
               ),
             ),

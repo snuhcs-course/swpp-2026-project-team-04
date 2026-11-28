@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../models/character_idle_motion.dart';
 import '../models/game_score.dart';
+import '../models/reject_reason_korean.dart';
 import '../models/rep_event.dart';
 import 'battle_stage_model.dart';
 
@@ -397,6 +398,7 @@ class BattleFxPuff {
 /// short label.
 class BattleFxSign {
   const BattleFxSign({
+    this.fullCorrection = false,
     required this.reason,
     required this.average,
     required this.scale,
@@ -413,8 +415,9 @@ class BattleFxSign {
   final double rotation;
   final double opacity;
 
-  /// The label: the reason only, e.g. "무릎 떼기".
-  String get text => reason.signLabel;
+  /// Live feedback can display the full coaching sentence across several lines.
+  final bool fullCorrection;
+  String get text => fullCorrection ? reason.koreanMessage : reason.signLabel;
 
   BattleFxTone get tone => average ? BattleFxTone.average : BattleFxTone.danger;
 }
@@ -681,7 +684,7 @@ class _SideFx {
 /// The bands of one rep: "MISS" for a swing that missed, or the grade word
 /// and then the points for a blow that landed.
 class _Pop {
-  const _Pop(this.at, this.grade, this.points);
+  const _Pop(this.at, this.grade, this.points, {this.showZeroOnMiss = false});
 
   /// When the first band pops up: as the blow lands, or 110 ms into a miss.
   final double at;
@@ -689,6 +692,7 @@ class _Pop {
   /// Null for a miss.
   final GameGrade? grade;
   final int points;
+  final bool showZeroOnMiss;
 }
 
 class _Sign {
@@ -943,7 +947,14 @@ class BattleFxTimeline {
       }
     } else {
       side.act = _Act(_ActKind.miss, now, power);
-      side.pop = _Pop(now + 110, null, 0);
+      side.pop = _Pop(
+        now + 110,
+        null,
+        0,
+        showZeroOnMiss:
+            event.side == BattleSide.me &&
+            event.reason == RejectReason.kneesDown,
+      );
       _cues.add((now, BattleStageCue(BattleCueKind.miss, side: event.side)));
     }
     // The sign is only for the user's own rep that did not count; the latest
@@ -1578,6 +1589,7 @@ class BattleFxTimeline {
     final d = now - sign.at;
     if (d < 0 || d >= BattleFx.signMs) return null;
     return BattleFxSign(
+      fullCorrection: sign.reason == RejectReason.kneesDown,
       reason: sign.reason,
       average: sign.average,
       scale: d < 130 ? 0.6 + 0.4 * BattleFx.back(d / 130) : 1,
@@ -1616,12 +1628,12 @@ class BattleFxTimeline {
         if (miss != null) {
           add(
             BattleFxBanner(
-              text: 'MISS',
+              text: rep.showZeroOnMiss ? 'MISS +0' : 'MISS',
               top: 155,
-              textSize: 84,
+              textSize: rep.showZeroOnMiss ? 50 : 84,
               tone: BattleFxTone.plain,
               opacity: miss.opacity,
-              dx: -sign * 56,
+              dx: rep.showZeroOnMiss ? 0 : -sign * 56,
               rotation: sign * 7,
               scaleX: 0.78 * miss.scale,
               scaleY: miss.scale,
