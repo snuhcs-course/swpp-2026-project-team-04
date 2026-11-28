@@ -7,6 +7,16 @@ These notes cover Jinyoung Park's Iteration 5 steps, items a–f per the guideli
 team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session Exporter before every push).
 
 ## 1. Where AI Was Used
+### P21 `feat/iter5-failover` (team plan #15, restart, backup restoration and failover rehearsal, 2026-11-28)
+- Rehearsal: the commands for the two production restarts (run after the user's OK), the separate environment on the
+  team server (`/srv/gymrats/rehearsal-p21`, restored from the latest backup, deleted afterwards), the check script
+  for history, sign-up, login, matching, result saving and a battle cut by a crash, the hang watcher, and the timing:
+  Claude Code (scripts not committed; the ones run on the server were deleted with the rehearsal folder).
+- `docs/iteration-5/server-failover.md` (`0d2266a`) and `server/tests/test_failover.py` (`63b5dde`): Claude Code.
+- Not used: where each rehearsal ran (production restarts now; a separate environment on the same server once the
+  Lightsail console turned out to be admin-only) and leaving the static IP failover as a procedure (the user's
+  decisions).
+
 ### P7 `feat/iter5-google-auth` (team plan #1, Google sign-in and sign-up, 2026-11-23 ~ 11-24)
 - Server: `server/accounts/google_auth.py` (whole file: ID token check with Google's keys), the Google login view,
   nickname rule and body info view in `server/accounts/views.py`, `serializers.py`, `models.py`, migration
@@ -105,9 +115,44 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-28] "task 수행해"
 [Jinyoung Park, 11-28] "팀서버도 ㄱㄱ"
 [Jinyoung Park, 11-28] "가상 상대 대기 시간은 빼도 ㄱㅊ을듯"
+[Jinyoung Park, 11-28] "P21 task 수행해"
+[Jinyoung Park, 11-28] "콘솔 작업을 내가 해야함?"
+[Jinyoung Park, 11-28] "관리자라 ㅠㅠ"
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P21, check script: the first three runs against the restored environment stopped on bugs in Claude's own test
+  client, not in the server: no keep-alive ping (closed 4000), no answer to the server's pings while it read the other
+  player's socket (closed 1001), and request ids reused across the two connections (`REQUEST_ID_REUSED`). Each was
+  read from the close code and fixed; the fourth run's numbers are the ones recorded.
+- P21, tests: the first `test_failover.py` restored right after the backup, so the reviewer subagent found the tests
+  still passed with `restore()` doing nothing. They now change the data between backup and restore (a new password,
+  a later battle, a sign-up, a voided battle); with a no-op restore 4 of 5 fail.
+- P21, detection time: Claude first wrote the worst case as about 3 min, counting 60 s per check; the reviewer
+  pointed out that each failed check also waits 5 s, so the checks came 65 s apart and the worst case is about
+  3 min 16 s, above the 3 min draft target.
+- P21, plan: Claude planned the restore and detection on a temporary Lightsail instance that the user would create;
+  only the team admin has the console, so the plan changed to a separate environment on the team server.
+- P21, Codex review of `e4b3411` (P1): the failover procedure restored the backup on a replacement booted from a
+  snapshot without stopping the services, which start at boot; the battle server's one-time recovery would then run
+  on the snapshot's database and leave battles from a newer backup `active` for good. Neither Claude nor the reviewer
+  subagent had checked what a snapshot starts at boot. Fixed in the procedure (`f00735e`): stop both right after
+  boot, restore, then start the API before the battle server.
+- P21, Codex review of `fab012b` (P1 ×2): the procedure did not bring a stale snapshot's code up to the release
+  before `migrate`, and gave a fresh instance no IP certificate. Claude's first fix said only "run
+  `install-https.sh`"; the reviewer subagent found it stops at its first line on a fresh instance (no nginx site
+  yet) and that a snapshot's 6-day certificate may already be expired. Fixed in `25139d3` after a second review.
+- P21, Codex review of `17dbf12` (P1): the procedure trusted `/health`, which does not query the database, so a
+  restored file the API cannot write would pass. Claude first proposed a login as the write check; the code showed
+  login does not write, so the check is a permission test plus a login and history read (`ed5f1be`).
+- P21, Codex review of `a724bf4` (P1): the `migrate` command Claude wrote in that fix could not run (no working
+  directory, no `.env`, so Django stops on the missing secrets). A fix that adds a command needs the command checked
+  against the settings and the unit, as the reviewer then did. Fixed in `a05099e`.
+- P21, Codex review of `706349e` (P1): the data directory was created after the restore on a fresh instance. Five
+  Codex rounds in a row (`e4b3411` to `706349e`) each found one more gap in the static IP failover procedure, which
+  was written but never run; a written procedure is not verified until the admin rehearses it (finding 6). Fixed in
+  `b2942c5`.
+
 - P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
   test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.
   Caught when the next run failed with "Address already in use" on port 8090 and that run's client had reached the
@@ -251,6 +296,13 @@ Full list: `ishlove77-Prompt-Log.md`.
   and released by the app when the battle ends.
 
 ## 4. Revisions and Decisions
+- P21 environment: temporary Lightsail instance with a new static IP (user, first answer) → the console is admin-only
+  → a separate environment on the team server for detection and restore, and the static IP failover as a procedure
+  for the admin (user).
+- P21 order: the first draft of the failover procedure did not say which service starts first; the reviewer noted
+  that the battle server asks the API once at start-up to void cut battles and ignores a failure, so the procedure
+  now starts the API first and restarts the battle server if the API was not up.
+
 - P20 scenarios: one 200-user run → also a simulated-heavy run (`--virtual-after-ms 0`), since with 200 users online
   only 2 of 600 battles got a simulated opponent (Claude's proposal); the team server added at the user's request
   ("팀서버도 ㄱㄱ"), first with the client on the Mac through a tunnel, then both on the server (user's choice after the
@@ -291,7 +343,7 @@ Full list: `ishlove77-Prompt-Log.md`.
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
 ## 5. Manual Fixes
-None observed in P7, P9, P10, P11 or P20: every code change was made by Claude Code and checked by the user.
+None observed in P7, P9, P10, P11, P20 or P21: every code change was made by Claude Code and checked by the user.
 
 ## 6. Reflection
 TODO(Jinyoung Park): what worked and what to change, at the end of the iteration.
