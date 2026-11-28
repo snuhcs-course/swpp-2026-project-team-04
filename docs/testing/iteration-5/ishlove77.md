@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P20 `feat/iter5-matching-load` (PR #111): fixes for the Codex review of `bd2e5f3`
+Code at commit `d691e47`.
+- **Findings:** (1) the test server's skill table had no records for the bots, so every bot used the average estimate
+  and every simulated opponent copied the same account; (2) the bots waited 10 s for an upgrade, the app 8 s. The
+  bots are now in the table under the ids the run gives them (`--bots`), the report counts the accounts the simulated
+  opponents copied, and the connect timeout defaults to 8 s.
+- **Tests:** `bot ids are the same in the run and in the skill table`, `each bot in the table has its own estimate,
+  not the average`, `simulated opponents copy accounts near each bot's own estimate` (with no bots in the table it
+  finds 1 account and fails), and the default timeout in `defaults are the documented 200-user scenario`.
+- **Rerun:** S3 on the Mac with the bots in the table: 600/600 battles, 0 server errors, 556 simulated opponents
+  copying 24 accounts. The other runs had at most 2 simulated battles and were not rerun (see the results document).
+- **Results:** `flutter analyze` no issues; tool tests 29 passed, 0 failed. No app or Python change.
+
 #### 2026-11-28 · step P20 `feat/iter5-matching-load` (PR #111): fixes for the Codex review of `0ea34e2`
 Code at commit `2ef4630`.
 - **Findings:** (P1) an upgrade finishing after the connect timeout stayed open on the server, uncounted; (P2) a bot

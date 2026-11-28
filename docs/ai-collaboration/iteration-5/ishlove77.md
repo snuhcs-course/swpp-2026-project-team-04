@@ -126,6 +126,10 @@ Full list: `ishlove77-Prompt-Log.md`.
   stopped while connecting could keep its socket, and the client ignored unknown options. None of them showed in
   the reported runs, but the first two are exactly what an overloaded run (like the discarded tunnel attempt) hits.
   Fixed in `2ef4630` with four tests that fail on the old code.
+- P20, second Codex review (`bd2e5f3`): the skill table of Claude's test server had only numeric account ids and
+  none of the bots, so the first S3 claimed to load "skill matching" while every bot used the average estimate.
+  Neither the reviewer nor Claude noticed it from the numbers. Fixed in `d691e47`; S3 was run again (24 accounts
+  copied instead of one) and the old run is kept in the JSON as superseded.
 - P20, found in the battle server (not fixed, owner's file): an uncaught `StreamSink is closed` from the `catch`
   path of `BattleServer._receive`, seen only with server and client in one process; reported in the results doc.
 
