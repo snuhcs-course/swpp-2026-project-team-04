@@ -165,7 +165,7 @@ void main() {
       tester,
     ) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
-      expect(find.text('무릎 떼기'), findsOneWidget);
+      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
       expect(
         tester.widget<BattleBand>(find.byType(BattleBand)).color,
         AppColors.danger,
@@ -305,8 +305,8 @@ void main() {
     ) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
       final band = tester.getSize(find.byType(BattleBand));
-      final label = tester.getSize(find.text('무릎 떼기'));
-      final style = tester.widget<Text>(find.text('무릎 떼기')).style!;
+      final label = tester.getSize(find.text('무릎을 바닥에서 떼요'));
+      final style = tester.widget<Text>(find.text('무릎을 바닥에서 떼요')).style!;
       expect(style.fontFamily, AppFonts.display);
       expect(style.fontSize, 66);
       // A 66 point line 1.12 high (laid out to whole points).

@@ -608,7 +608,7 @@ void main() {
         (tester.getTopRight(sign) - tester.getTopLeft(sign)).distance,
         closeTo(216 * scale, 0.5),
       );
-      expect(find.text('무릎 떼기'), findsOneWidget);
+      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
       await _wait(tester, 1000);
       expect(find.byType(BattleRejectSignView), findsNothing);
       expect(left, 0);
@@ -1985,7 +1985,7 @@ void main() {
       );
       await _wait(tester, 400);
       // The label of the sign lies over the camera.
-      final label = tester.getCenter(find.text('무릎 떼기'));
+      final label = tester.getCenter(find.text('무릎을 바닥에서 떼요'));
       expect(label.dy, greaterThan(390));
       await tester.tapAt(label);
       expect(_cameraTaps, 1);

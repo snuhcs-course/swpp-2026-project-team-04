@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import '../models/reject_reason_korean.dart';
+import '../models/rep_event.dart';
 import '../theme/app_theme.dart';
 import 'battle_art_path.dart';
 import 'battle_banner.dart';
@@ -350,14 +351,19 @@ class BattleRejectSignView extends StatelessWidget {
                     child: OverflowBox(
                       fit: OverflowBoxFit.deferToChild,
                       minWidth: 0,
-                      maxWidth: double.infinity,
-                      child: BattleBand(
-                        text: sign.text,
-                        style: theme.stageSignLabel,
-                        color: sign.tone.color,
-                        sidePadding: _labelSidePadding,
-                        topPadding: _labelTopPadding,
-                        edge: labelEdge,
+                      maxWidth: sign.reason == RejectReason.kneesDown
+                          ? BattleFx.stageWidth - 48
+                          : double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: BattleBand(
+                          text: sign.text,
+                          style: theme.stageSignLabel,
+                          color: sign.tone.color,
+                          sidePadding: _labelSidePadding,
+                          topPadding: _labelTopPadding,
+                          edge: labelEdge,
+                        ),
                       ),
                     ),
                   ),

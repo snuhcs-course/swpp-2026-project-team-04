@@ -633,7 +633,7 @@ void main() {
           const BattleStageEvent(
             side: BattleSide.me,
             grade: null,
-            reason: RejectReason.kneesDown,
+            reason: RejectReason.bellyDown,
           ),
           0,
         )

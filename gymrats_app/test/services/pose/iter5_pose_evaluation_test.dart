@@ -150,7 +150,7 @@ void main() {
         check(2000, null, 120, RejectReason.insufficientDepth, 'average', 5, 2);
         check(2200, null, 121, RejectReason.insufficientDepth, null, 0, 2);
         check(2400, null, null, RejectReason.insufficientDepth, null, 0, 2);
-        check(2500, null, 90, RejectReason.kneesDown, 'average', 0, 2);
+        check(2500, null, 90, RejectReason.kneesDown, null, 0, 2);
         check(
           20000,
           null,
@@ -160,7 +160,7 @@ void main() {
           10,
           2,
         );
-        check(20500, null, 90, RejectReason.kneesDown, 'average', 0, 2);
+        check(20500, null, 90, RejectReason.kneesDown, null, 0, 2);
       } else {
         check(2000, null, null, RejectReason.shallowSquat, null, 0, 2);
         check(2100, null, null, RejectReason.standUpFully, null, 0, 2);

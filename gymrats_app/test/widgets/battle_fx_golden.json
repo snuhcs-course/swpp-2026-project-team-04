@@ -4622,7 +4622,7 @@
   },
   {
    "name": "my_reject",
-   "about": "내 0점 거절, 사유 3(무릎 떼기). 헛스윙 MISS와 빨간 표지판.",
+   "about": "무릎 푸시업은 0점. 빨간 표지판에 기각 사유만 표시.",
    "before": {
     "myScore": 0,
     "opponentScore": 0,
@@ -4679,7 +4679,7 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 0.6,
       "rot": 0,
@@ -4744,7 +4744,7 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 2.32,
@@ -4809,30 +4809,13 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1.01,
       "rot": 0.7,
       "opacity": 1
      },
-     "banners": [
-      {
-       "text": "MISS",
-       "font": "number",
-       "top": 155,
-       "fontSize": 84,
-       "bandHeight": 75.7,
-       "padX": 15.6,
-       "band": "#FFFFFF",
-       "align": "center",
-       "opacity": 1,
-       "dx": -56,
-       "dy": 0,
-       "rot": 7,
-       "scaleX": 0.39,
-       "scaleY": 0.5
-      }
-     ],
+     "banners": [],
      "combos": [],
      "hud": {
       "clock": "0:30",
@@ -4891,30 +4874,13 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": -0.17,
       "opacity": 1
      },
-     "banners": [
-      {
-       "text": "MISS",
-       "font": "number",
-       "top": 155,
-       "fontSize": 84,
-       "bandHeight": 75.7,
-       "padX": 15.6,
-       "band": "#FFFFFF",
-       "align": "center",
-       "opacity": 1,
-       "dx": -56,
-       "dy": 0,
-       "rot": 7,
-       "scaleX": 0.63,
-       "scaleY": 0.81
-      }
-     ],
+     "banners": [],
      "combos": [],
      "hud": {
       "clock": "0:30",
@@ -4973,30 +4939,13 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": -0.82,
       "opacity": 1
      },
-     "banners": [
-      {
-       "text": "MISS",
-       "font": "number",
-       "top": 155,
-       "fontSize": 84,
-       "bandHeight": 75.7,
-       "padX": 15.6,
-       "band": "#FFFFFF",
-       "align": "center",
-       "opacity": 1,
-       "dx": -56,
-       "dy": 0,
-       "rot": 7,
-       "scaleX": 0.81,
-       "scaleY": 1.03
-      }
-     ],
+     "banners": [],
      "combos": [],
      "hud": {
       "clock": "0:30",
@@ -5055,30 +5004,13 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 0,
       "opacity": 1
      },
-     "banners": [
-      {
-       "text": "MISS",
-       "font": "number",
-       "top": 155,
-       "fontSize": 84,
-       "bandHeight": 75.7,
-       "padX": 15.6,
-       "band": "#FFFFFF",
-       "align": "center",
-       "opacity": 1,
-       "dx": -56,
-       "dy": 0,
-       "rot": 7,
-       "scaleX": 0.78,
-       "scaleY": 1
-      }
-     ],
+     "banners": [],
      "combos": [],
      "hud": {
       "clock": "0:30",
@@ -5137,30 +5069,13 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 0,
       "opacity": 1
      },
-     "banners": [
-      {
-       "text": "MISS",
-       "font": "number",
-       "top": 155,
-       "fontSize": 84,
-       "bandHeight": 75.7,
-       "padX": 15.6,
-       "band": "#FFFFFF",
-       "align": "center",
-       "opacity": 1,
-       "dx": -56,
-       "dy": 0,
-       "rot": 7,
-       "scaleX": 0.78,
-       "scaleY": 1
-      }
-     ],
+     "banners": [],
      "combos": [],
      "hud": {
       "clock": "0:30",
@@ -5219,30 +5134,13 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 0,
       "opacity": 1
      },
-     "banners": [
-      {
-       "text": "MISS",
-       "font": "number",
-       "top": 155,
-       "fontSize": 84,
-       "bandHeight": 75.7,
-       "padX": 15.6,
-       "band": "#FFFFFF",
-       "align": "center",
-       "opacity": 1,
-       "dx": -56,
-       "dy": 0,
-       "rot": 7,
-       "scaleX": 0.78,
-       "scaleY": 1
-      }
-     ],
+     "banners": [],
      "combos": [],
      "hud": {
       "clock": "0:30",
@@ -5301,30 +5199,13 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 0,
       "opacity": 1
      },
-     "banners": [
-      {
-       "text": "MISS",
-       "font": "number",
-       "top": 155,
-       "fontSize": 84,
-       "bandHeight": 75.7,
-       "padX": 15.6,
-       "band": "#FFFFFF",
-       "align": "center",
-       "opacity": 1,
-       "dx": -56,
-       "dy": 0,
-       "rot": 7,
-       "scaleX": 0.78,
-       "scaleY": 1
-      }
-     ],
+     "banners": [],
      "combos": [],
      "hud": {
       "clock": "0:30",
@@ -5383,7 +5264,7 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 0,
@@ -5448,7 +5329,7 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 0,
@@ -5513,7 +5394,7 @@
      "puff": null,
      "sign": {
       "reason": 3,
-      "text": "무릎 떼기",
+      "text": "무릎을 바닥에서 떼요",
       "band": "#FF3B30",
       "scale": 1,
       "rot": 0,

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../models/character_idle_motion.dart';
 import '../models/game_score.dart';
+import '../models/reject_reason_korean.dart';
 import '../models/rep_event.dart';
 import 'battle_stage_model.dart';
 
@@ -413,8 +414,9 @@ class BattleFxSign {
   final double rotation;
   final double opacity;
 
-  /// The label: the reason only, e.g. "무릎 떼기".
-  String get text => reason.signLabel;
+  String get text => reason == RejectReason.kneesDown
+      ? reason.koreanMessage
+      : reason.signLabel;
 
   BattleFxTone get tone => average ? BattleFxTone.average : BattleFxTone.danger;
 }
@@ -943,7 +945,11 @@ class BattleFxTimeline {
       }
     } else {
       side.act = _Act(_ActKind.miss, now, power);
-      side.pop = _Pop(now + 110, null, 0);
+      // The player's knee correction replaces the generic MISS banner.
+      side.pop =
+          event.side == BattleSide.me && event.reason == RejectReason.kneesDown
+          ? null
+          : _Pop(now + 110, null, 0);
       _cues.add((now, BattleStageCue(BattleCueKind.miss, side: event.side)));
     }
     // The sign is only for the user's own rep that did not count; the latest

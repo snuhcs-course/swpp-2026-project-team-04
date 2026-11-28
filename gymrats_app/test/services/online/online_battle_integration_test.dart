@@ -1379,11 +1379,12 @@ void main() {
           reason: RejectReason.kneesDown,
         ),
       );
-      expect(a.myLastScore!.points, 0);
-      await until(() => b.opponentLastScore != null);
+      expect(a.myLastScore, isNull);
+      await until(() => b.opponentMisses == 1 && a.myInvalidReps == 1);
       expect(a.myScore, 0);
       expect(b.opponentScore, 0);
-      expect(b.opponentLastScore!.points, 0);
+      expect(b.opponentLastScore, isNull);
+      expect(b.opponentReps, 0);
       expect(a.myInvalidReps, 1);
       expect(a.myReps, 0);
     });

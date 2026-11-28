@@ -1256,13 +1256,14 @@ void main() {
       expect(texts(both, 520), ['+10']);
     });
 
-    test('a miss takes the same side\'s word and points down at once and '
-        'shows its own MISS; a second miss replaces the first', () {
+    test('a knee correction clears the last score and a later ordinary '
+        'miss still gets its banner', () {
       final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
       expect(texts(fx, 599), ['+10']);
       fx.rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 600);
       expect(texts(fx, 600), isEmpty);
-      expect(texts(fx, 720), ['MISS']);
+      expect(texts(fx, 720), isEmpty);
+      expect(fx.frame(720).sign!.text, '무릎을 바닥에서 떼요');
       fx.rep(_rep(BattleSide.me, null, reason: RejectReason.phoneMoved), 1600);
       expect(texts(fx, 1600), isEmpty);
       expect(texts(fx, 1720), ['MISS']);
@@ -1987,7 +1988,7 @@ void main() {
 
     test('a blow that lands takes the same side\'s MISS away', () {
       final fx = BattleFxTimeline()
-        ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0);
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.bellyDown), 0);
       expect(fx.frame(300).banners.map((b) => b.text), ['MISS']);
       fx.rep(_good(BattleSide.me), 300);
       // Gone at once, before the blow's own word comes up.
@@ -1997,7 +1998,7 @@ void main() {
 
     test('two MISS bands show at once, one on each side, mine drawn last', () {
       final fx = BattleFxTimeline()
-        ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0)
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.bellyDown), 0)
         ..rep(_rep(BattleSide.opponent, null), 50);
       final misses = fx.frame(400).banners;
       expect(misses.map((b) => b.text), ['MISS', 'MISS']);

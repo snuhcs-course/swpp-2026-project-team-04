@@ -178,14 +178,14 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('fail (push-up): the real sign 무릎 떼기, a red frame, the '
+    testWidgets('fail (push-up): the real sign 무릎을 바닥에서 떼요, a red frame, the '
         'shoulder line white, no band', (tester) async {
       await show(tester, TutorialGameScene.of(pushUp, TutorialStep.fail));
       final sign = tester.widget<BattleRejectSignView>(
         find.byType(BattleRejectSignView),
       );
       expect(sign.sign.reason, RejectReason.kneesDown);
-      expect(find.text('무릎 떼기'), findsOneWidget);
+      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
       expect(find.text('GOOD'), findsNothing);
       expect(camera(tester).frame, BattleFxCameraFrame.rejected);
       expect(
