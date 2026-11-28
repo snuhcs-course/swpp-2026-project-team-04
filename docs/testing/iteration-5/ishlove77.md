@@ -5,6 +5,15 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `e4b3411`
+Fix at commit `f00735e` (line wrap in the next commit).
+- **Finding (P1):** the failover procedure restored the backup on a replacement booted from a snapshot without
+  stopping the services first; both start at boot, so the battle server's one-time recovery would run against the
+  snapshot's database and a newer backup could bring back `active` battles that are never voided. The procedure
+  (`docs/iteration-5/server-failover.md` 5, steps 2–3, and finding 5) now stops both services right after boot and
+  restores only with them stopped, and stops them again after any reboot before the start. Documentation only; no code or test change.
+- **Results:** unchanged from the entry below (server `pytest` 372 passed, 98%).
+
 #### 2026-11-28 · step P21 `feat/iter5-failover` (team plan #15): restart, backup restore and failover rehearsal
 Code at commits `63b5dde` (tests) and `0d2266a` (rehearsal record, `docs/iteration-5/server-failover.md`). Server only;
 no app change. Commands from `server/` on macOS (Python 3.12).

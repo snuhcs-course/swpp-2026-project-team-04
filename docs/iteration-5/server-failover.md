@@ -104,9 +104,9 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
 2. Create an instance from the latest snapshot (or a fresh instance with the code and a DB backup restored as in 4).
    On a snapshot both services start at boot (`gymrats-battle` is enabled by `install-battle.sh` and pulls in
    `gymrats-api`), so as soon as it is up run `sudo systemctl stop gymrats-battle gymrats-api` and check both are
-   inactive; after any reboot before step 4, stop them again. Otherwise the battle server's one-time start-up recovery runs against the snapshot's database, and a
-   newer backup restored after it brings back `active` battles that are never voided; the API's open connections
-   would also overlap the restore.
+   inactive; after any reboot before step 4, stop them again. Otherwise the battle server's one-time start-up
+   recovery runs against the snapshot's database, and a newer backup restored after it brings back `active` battles
+   that are never voided; the API's open connections would also overlap the restore.
 3. Put `.env` back (it is not in backups); with both services stopped, restore the newest DB backup if it is newer
    than the snapshot; run `pragma integrity_check`, then **`migrate`** and `migrate --check` (a backup older than the
    code needs migrations; in 4 three were applied).

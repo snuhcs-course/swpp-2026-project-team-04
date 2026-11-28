@@ -133,6 +133,11 @@ Full list: `ishlove77-Prompt-Log.md`.
   3 min 16 s, above the 3 min draft target.
 - P21, plan: Claude planned the restore and detection on a temporary Lightsail instance that the user would create;
   only the team admin has the console, so the plan changed to a separate environment on the team server.
+- P21, Codex review of `e4b3411` (P1): the failover procedure restored the backup on a replacement booted from a
+  snapshot without stopping the services, which start at boot; the battle server's one-time recovery would then run
+  on the snapshot's database and leave battles from a newer backup `active` for good. Neither Claude nor the reviewer
+  subagent had checked what a snapshot starts at boot. Fixed in the procedure (`f00735e`): stop both right after
+  boot, restore, then start the API before the battle server.
 
 - P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
   test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.
